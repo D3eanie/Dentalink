@@ -1,0 +1,123 @@
+# Blockchain Module Usage Report
+
+Date: 2026-02-04
+
+## 1) Scope and summary
+The project implements a blockchain-style hash chaining system for two main areas:
+1) **Audit log chain** (general system activity, including patient-record actions).
+2) **Financial records chain** (per-record hash + linked chain for tamper detection).
+
+The implementation centers around `BlockchainService` and is surfaced through controller actions, model hooks, and API routes.
+
+## 2) Core components
+
+### Service layer
+- **`BlockchainService`** provides:
+  - Hash calculation and chain linking for audit logs (mineBlock)
+  - Audit-log chain verification and stats
+  - Financial-record hash calculation, chain hash generation, and chain verification
+
+Sources:
+- app/Services/BlockchainService.php
+
+### Models
+- **`AuditLog`** stores audit events with `current_hash` and `previous_hash` and auto-generates hashes on create.
+- **`FinancialRecord`** stores `blockchain_hash` and `previous_blockchain_hash`, and auto-generates/updates hashes via model hooks.
+
+Sources:
+- app/Models/AuditLog.php
+- app/Models/FinancialRecord.php
+
+### Controllers
+- **`PatientRecordController`** uses blockchain logging for patient record actions and exposes chain retrieval/export.
+- **`FinancialRecordController`** uses blockchain verification, chain retrieval, and rebuild endpoints for financial records.
+- **`BlockchainController`** provides audit-log chain verification, export, suspicious activity, and search APIs (no route registrations found in routes/*.php).
+
+Sources:
+- app/Http/Controllers/PatientRecordController.php
+- app/Http/Controllers/FinancialRecordController.php
+- app/Http/Controllers/BlockchainController.php
+
+## 3) Audit-log blockchain usage
+
+### How audit logs are chained
+- `BlockchainService::mineBlock()` calculates a SHA-256 hash of the action payload plus the previous hash and stores it in `audit_logs`.
+- `AuditLog` model also auto-generates hash fields on create if missing, ensuring chain continuity at the model layer.
+
+### Where audit-chain logging is invoked
+- Patient record creation/update/deletion/access are logged through `BlockchainService` from `PatientRecordController`.
+
+Paths:
+- app/Http/Controllers/PatientRecordController.php
+- app/Services/BlockchainService.php
+- app/Models/AuditLog.php
+
+### Verification and investigation
+- `BlockchainService::verifyAuditLogChain()` recalculates hashes and flags tampered records.
+- `BlockchainController` exposes verification, suspicious activity reporting, chain export, search, and hash comparison endpoints.
+
+Paths:
+- app/Services/BlockchainService.php
+- app/Http/Controllers/BlockchainController.php
+
+## 4) Financial-record blockchain usage
+
+### How financial records are chained
+- `BlockchainService::calculateFinancialRecordHash()` hashes record fields.
+- `generateFinancialRecordBlockchainHash()` links each record to the prior record’s chain hash to form a chain.
+- `FinancialRecord::boot()` auto-generates/updates the hash after create/update (skipped in testing environment).
+
+Paths:
+- app/Services/BlockchainService.php
+- app/Models/FinancialRecord.php
+
+### Where it is used in flows
+- **Create**: `FinancialRecordController::store()` creates the record, then records blockchain event.
+- **Update**: `FinancialRecordController::update()` updates and records blockchain event.
+- **Delete**: `FinancialRecordController::destroy()` records deletion event prior to delete.
+- **View**: `FinancialRecordController::show()` automatically verifies the record.
+- **Payment status**: `markAsPaid()` logs a payment status blockchain event.
+
+Paths:
+- app/Http/Controllers/FinancialRecordController.php
+- app/Services/BlockchainService.php
+
+## 5) API endpoints
+
+### Financial-record blockchain endpoints (registered)
+Defined in routes/api.php:
+- `GET /api/financial-records/blockchain/statistics`
+- `POST /api/financial-records/blockchain/verify-chain`
+- `GET /api/financial-records/{id}/blockchain/verify`
+- `GET /api/financial-records/{id}/blockchain/chain`
+- `POST /api/financial-records/blockchain/rebuild` (admin-only)
+
+Path:
+- routes/api.php
+
+### Audit-log blockchain endpoints
+`BlockchainController` includes endpoints for:
+- Chain verification
+- Single-record verification
+- Suspicious activity
+- Export chain
+- Search logs
+- Hash comparison
+
+No matching route registrations were found in routes/*.php for this controller.
+
+Path:
+- app/Http/Controllers/BlockchainController.php
+
+## 6) Documentation references
+The financial-record blockchain is documented in BLOCKCHAIN_INTEGRATION.md.
+
+Path:
+- BLOCKCHAIN_INTEGRATION.md
+
+## 7) Notes / observations
+- `BlockchainService` methods are instance methods but are called statically in `PatientRecordController` and `BlockchainController`. This works in PHP but is non-idiomatic and could be standardized for clarity.
+- `BlockchainController` appears to be implemented but not wired to routes, so its endpoints may be unused unless routes are added elsewhere.
+
+---
+Generated by GitHub Copilot

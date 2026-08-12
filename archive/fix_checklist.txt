@@ -1,0 +1,173 @@
+FIXED
+------------------------------
+-Fix timeslots on booking; disable/remove timeslots before current booking time
+-Add 15min buffer after appointments
+-Default payment method to cash unless changed
+-Add button to quickly confirm appointments
+-When cancelling bookings add reason for cancellation
+-When schedules are in a past date clear them from the database
+-Fix report generation and export functions
+-Prevent login of already logged in account (logs out other session automatically)
+-Handle simultaneous booking of same time slot (database locking implemented)
+-Fix race condition in appointment booking (transactions + locking)
+-Missing database transactions (all critical operations now use transactions)
+-Missing validation for service duration (null handling + validation)
+-Incomplete error handling in financial record creation
+-Null reference in appointment update (validation added)
+-No automatic notification for delayed appointments (command created)
+-Past schedules cleanup (command created: schedules:cleanup-past)
+-Inconsistent API error responses (standardized)
+-Change financial records icon (standardized)
+-Hardcoded buffer minutes (now configurable via config/app.php and APPOINTMENT_BUFFER_MINUTES env)
+-Missing audit logging (verified all critical operations have complete audit logging)
+-Inconsistent date formatting (created centralized dateFormatter utility with 12+ standardized functions)
+-Missing frontend validation (created formValidation utility with pre-defined rules for all forms)
+-Type safety improvements (created comprehensive TypeScript types/index.ts replacing 'any' with proper interfaces)
+-Inconsistent naming conventions (VERIFIED COMPLIANT - See CODE_QUALITY_REPORT.txt - Application already follows industry-standard conventions consistently: camelCase for JS/TS variables, snake_case for database fields, SCREAMING_SNAKE_CASE for constants, PascalCase for components/classes)
+-Missing loading states (VERIFIED COMPLIANT - See CODE_QUALITY_REPORT.txt - 50+ loading states already properly implemented across all major components with ~98% coverage of async operations)
+-Mock data in Settings page (line 90 of Admin/Settings.tsx) //(for verification)
+-Missing unit tests for critical functions (RESOLVED - Created 8 test files with 60+ test methods covering models, services, and business logic - See tests/UNIT_TESTS_README.md)
+-Remove reason for visit in booking (migration created, needs to be run and UI update) //i think fixed with updated sql in database folder
+-automatically manage inactive patient records //(for verification)
+-Fix Session expired around login (CSRF token refresh implemented) //properly addressed
+-After logout, trying to log back in throws an error page //properly addressed
+-Add tooth history management //added database schema and forms
+-fix tooth history management displaying of records in tooth records page //working on admin and staff portal
+-Add action button in patient records page //redirect to tooth records page with records filtered to patient_id
+-Fix tooth records widget on dashboard // fixed widget
+-create a json file where a duplicate of the financial records are stored //checked
+-fix blockchain verification report to report on the crosschecking of the financial records files. //updated
+-create a function on the blockchain verification to crosscheck the contents of the financial_records table with the json file. //implemented but needs to store crytographed version of the records
+-implement blockchain verification //verifies hash chain connection
+-add a function to fix data integrity in database based on the json file but create a log to indicate which record has been deleted and add it to the report //implemented with CLI tool, API endpoints, detailed logging, and comprehensive documentation
+-edit the create financial record function to store on both the json file and financial_records table. //the json file should be encrypted.
+-create a function to restore financial_records integrity
+-remove overdue option in dropdown for payment //payment status is automated by system based on balance
+-update monthly revenue to follow values stored inside json file. //done
+-updated partial payment handling //fixed blockchain verification for partial payments
+-fix when clicking complete button and getting redirected to transaction page, do not change status unless a financial record is created so that when cancelled, you can restart the completion process of the appointment.
+-success messages that automatically dissapear or redirect you should not have a ok button but a loading reminder.
+-after forms confirmation, disable the buttons in the form to prevent multiple instances of the same action
+-The interface should allow for bulk selection of teeth. Instead of selecting them individually, the doctor should be able to select the
+'Upper Arch,' 'Lower Arch,' or 'Full Mouth' with one click. //make these dropdown options and not create multiple records.
+-remove ok button in success screen for popups that automatically disappear or redirect
+-update email notification to use peso instead of dollar
+-services should only show certain options in the tooth number dropdown which can vary on which service is selected
+-when multiple tooth records are created for an appointment, the payment amount should be calculated to be a sum of these records.
+-add logic for computing appointment costing. //sum of tooth records service amount connected to the appointment.
+-updated appointment timeslots in 15 minute intervals in patient portal
+-updated timeslots to remain available until an appointment in the timeslot is confirmed
+-The system should calculate the duration of the dental service and automatically add a 15-minute buffer for sterilization and equipment cleanup.
+-improved timeslot handling logic to consider the buffer period before and after the appointment.
+-improved blockchain verification reports
+-  Staff server error when creating transactions.
+Resolve the 'Partial' status error and bypass the blockchain verification mismatch. Ensure the system recognizes the updated costing and the 'Paid' flag
+In blockchain verification, finding exactly where a "tamper" occurred is actually quite systematic because of how the data is structured. While a high-level report might just say "Invalid Chain," the underlying technology allows you to pinpoint the exact block that was altered.
+-admin financial record verification
+-add popup notes near the appointment booking form for staff and admin to show the current appointments of the doctor selected in the form.
+-time table logic update to respect 12-1pm lunch break, ensure other cases don't overlap, and that cases do not extend past 5pm checkout time.
+-appointments race case //done
+-automatically cancel appointment after 15 min not getting checked in then send an email //done
+-----------------------------------------
+
+COMPLETED
+-----------------------------
+-Email notification integration //need to update email templates and add function for email verification, forgot password, and password reset request.
+  ✓ Created custom VerifyEmail notification (app/Notifications/VerifyEmail.php)
+  ✓ Created custom ResetPassword notification (app/Notifications/ResetPassword.php)
+  ✓ Created professional email templates (resources/views/emails/)
+  ✓ Added notification methods to User model
+  ✓ Fixed APP_URL for proper email link redirection (http://localhost:8000)
+  ✓ Added "Forgot password?" link to login page
+  ✓ Forgot password form fully functional
+  ✓ Password reset tokens properly stored and validated
+  ✓ Created custom plain-text token system for password reset (fixed bcrypt conflicts)
+  ✓ Created comprehensive documentation (docs/EMAIL_NOTIFICATION_GUIDE.md & FORGOT_PASSWORD_FEATURE.md)
+  ✓ Created test command (php artisan email:test)
+  ✓ System sends test emails successfully to Gmail
+  → All email verification, password reset, and forgot password features are working and production-ready
+
+-Email verification notice in database
+  ✓ Created UserObserver to track user verification status
+  ✓ Automatically create "Email Verification Required" notice for unverified users
+  ✓ Automatically mark notice as read when email is verified
+  ✓ Added email_verification type to notifications table
+  ✓ Created test commands to verify functionality
+  ✓ Dashboard displays email verification alert for unverified users
+  ✓ Alert shows title and message with direct link to verification settings
+  ✓ Alert automatically disappears when user verifies email
+  → Email verification tracking system fully integrated into dashboard
+
+-Email verification notice in dashboard (for users with unverified email)
+  ✓ Created UserObserver to track user verification status
+  ✓ Automatically create "Email Verification Required" notice for unverified users
+  ✓ Automatically mark notice as read when email is verified
+  ✓ Added email_verification type to notifications table
+  ✓ Modified DashboardController to query email verification notifications
+  ✓ Dashboard displays email verification alert for unverified patients
+  ✓ Alert shows title and message with direct link to verification settings
+  ✓ Alert automatically disappears when user verifies email
+  ✓ Frontend properly styled with Mail icon and action link
+  ✓ Created comprehensive tests for alert functionality
+  → Email verification notice fully integrated into patient dashboard
+
+TO FIX
+------------------------------
+-No rate limiting on some API endpoints //low-priority
+-hide console messages from browser dev window. //move this to log files to be temporarily stored in the repository. //optional
+
+FIXED
+-----
+-update appointment not reflecting updated appointment details
+✓ Added $appointment->refresh() after DB::transaction in AppointmentController::update() (line ~775)
+✓ Ensures model attributes are synchronized with database state after transaction completion
+✓ Email notifications now reflect actual updated data in database
+✓ Resolves issue where emails showed correct details but database wasn't updated
+
+-Appointment status email showing raw database values
+✓ Updated AppointmentUpdatedMail.php with formatStatusForEmail() method
+✓ Email now shows user-friendly status like "Pending Confirmation" instead of "pending_confirmation"
+✓ All status values properly formatted for patient emails
+
+-Admin staff reschedules showing "Pending Confirmation" instead of "Confirmed"
+✓ Updated AppointmentController to only apply pending_confirmation for patient reschedules
+✓ Admin/staff reschedules keep confirmed status since they have authority to confirm
+✓ Race-case logic now only applies to patient portal reschedules
+
+-Admin dashboard 500 error - CSRF token failing
+✓ Fixed .env SESSION_DOMAIN=null → SESSION_DOMAIN= (empty string)
+✓ Added SESSION_SAME_SITE=lax to .env configuration
+✓ Created DebugCsrfToken middleware for better error tracking
+
+-Admin dashboard 500 error - Unknown column payment_status
+✓ Updated FinancialRecord model scopePaid() to use balance column instead of payment_status
+✓ Added scopeOverdue() to determine overdue status from balance and updated_at
+✓ Updated payment status helper methods (isPending, isPaid, isPartial, isOverdue) to use balance
+✓ Updated markAsPaid(), markAsPartial(), markAsOverdue() to work with balance field
+✓ Removed references to dropped payment_status column throughout model
+✓ Dashboard now loads successfully without database errors
+-once financial record is verified by, it should become immmutable. //COMPLETED - Verified records are now immutable
+-recheck blockchain verification //COMPLETED - All tests passing, system healthy ✓
+-after saving financial records, redirect to financial management page
+--------------------------------
+
+BLOCKCHAIN TECHNIQUES TO DO
+-------------------------------
+-hash chaining //done
+-audit trailing with integrity verification //done
+-immutable data logging //done
+-smart contracts //done - implement verification and approval admin
+----------------------------------
+
+TO DO (*** shows that these have been addressed/implemented/completed)
+-----------------------------
+*** - The scheduling system updates in real-time; once an appointment is booked, the other time slot is no longer visible. //done to some degree
+*** - Prompt message in making appointments in the user side. Dont use "confirm booking" because the staff will be the one to confirm the booking. //addressed
+*** - REMOVE tooth records along with the dashboard statistics, number of transactions instead of these tooth records, change dashboard into
+(how many services, number of patients per duration, base it on interview with dentist)
+- Tooth records part, Per transaction (services that were done) not per appointment. Must include the tooth records in the patient record.
+*** - fix blockchain verification report to report on the crosschecking of the financial records files. //done
+*** - Session Data Loss: If a user selects a time slot and then navigates back to the previous page, the available time slots disappear or fail to reload.
+*** - Premature Slot Blocking: Time slots are being removed from availability as soon as they are "Scheduled," even if the appointment has not yet been "Confirmed."
+
+--------------------------------
