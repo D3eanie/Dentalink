@@ -1,0 +1,46 @@
+<html>
+<head>
+    <title>Tooth Records API Test</title>
+</head>
+<body>
+    <h1>Tooth Records API Test</h1>
+    <div id="output"></div>
+    <script>
+        (async () => {
+            try {
+                console.log('Fetching /api/tooth-records?per_page=100...');
+                const response = await fetch('/api/tooth-records?per_page=100', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', {
+                    'content-type': response.headers.get('content-type'),
+                    'content-length': response.headers.get('content-length'),
+                });
+
+                const text = await response.text();
+                console.log('Response text length:', text.length);
+                console.log('Response text (first 500 chars):', text.substring(0, 500));
+
+                if (response.status === 200) {
+                    const data = JSON.parse(text);
+                    console.log('Parsed JSON:', data);
+                    console.log('data.data length:', data?.data?.length);
+                    document.getElementById('output').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    document.getElementById('output').innerHTML = `<pre>ERROR: ${response.status}\n${text}</pre>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('output').innerHTML = `<pre>ERROR: ${error.message}\n${error.stack}</pre>`;
+            }
+        })();
+    </script>
+</body>
+</html>

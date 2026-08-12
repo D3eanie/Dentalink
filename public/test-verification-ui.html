@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Verification UI Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #4F46E5;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .success {
+            background: #10B981;
+            color: white;
+        }
+        .error {
+            background: #EF4444;
+            color: white;
+        }
+        .warning {
+            background: #F59E0B;
+            color: white;
+        }
+        button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #4338CA;
+        }
+        button:disabled {
+            background: #9CA3AF;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #1F2937;
+            color: #10B981;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .log-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #10B981;
+            padding-left: 10px;
+        }
+        .log-error {
+            border-left-color: #EF4444;
+            color: #EF4444;
+        }
+        .record-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .record-item {
+            padding: 10px;
+            border: 1px solid #E5E7EB;
+            border-radius: 4px;
+            margin: 5px 0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .record-item:hover {
+            background: #F3F4F6;
+        }
+        .verify-btn {
+            background: #10B981;
+            padding: 5px 15px;
+            font-size: 14px;
+        }
+        .verify-btn:hover {
+            background: #059669;
+        }
+        .verify-btn:disabled {
+            background: #9CA3AF;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Financial Record Verification Diagnostic Tool</h1>
+
+    <div class="card">
+        <h2>📋 System Status</h2>
+        <div id="systemStatus">Loading...</div>
+    </div>
+
+    <div class="card">
+        <h2>👤 Current User</h2>
+        <div id="userInfo">Loading...</div>
+    </div>
+
+    <div class="card">
+        <h2>💳 Financial Records (Unverified)</h2>
+        <button onclick="loadUnverifiedRecords()">🔄 Refresh Records</button>
+        <div id="recordsList" class="record-list"></div>
+    </div>
+
+    <div class="card">
+        <h2>🧪 Manual Verification Test</h2>
+        <p>Enter a record ID to test verification:</p>
+        <input type="number" id="testRecordId" placeholder="Record ID" style="padding: 8px; width: 200px; border: 1px solid #ccc; border-radius: 4px;">
+        <button onclick="testVerification()">✓ Test Verify</button>
+    </div>
+
+    <div class="card">
+        <h2>📝 Console Log</h2>
+        <button onclick="clearLog()">🗑️ Clear Log</button>
+        <div id="consoleLog" class="log"></div>
+    </div>
+
+    <script>
+        const log = [];
+
+        function addLog(message, isError = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logItem = `[${timestamp}] ${message}`;
+            log.push({ message: logItem, isError });
+
+            const logDiv = document.getElementById('consoleLog');
+            const logElement = document.createElement('div');
+            logElement.className = `log-item ${isError ? 'log-error' : ''}`;
+            logElement.textContent = logItem;
+            logDiv.appendChild(logElement);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('consoleLog').innerHTML = '';
+            log.length = 0;
+        }
+
+        function getCSRFToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                   document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || '';
+        }
+
+        async function checkSystemStatus() {
+            try {
+                addLog('Checking system status...');
+
+                // Check if we can reach the API
+                const response = await fetch('/api/user', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin'
+                });
+
+                const statusDiv = document.getElementById('systemStatus');
+                if (response.ok) {
+                    statusDiv.innerHTML = '<span class="status success">✓ API Reachable</span>';
+                    addLog('✓ System status: OK');
+                    return true;
+                } else {
+                    statusDiv.innerHTML = `<span class="status error">✗ API Error (${response.status})</span>`;
+                    addLog(`✗ API returned status ${response.status}`, true);
+                    return false;
+                }
+            } catch (error) {
+                const statusDiv = document.getElementById('systemStatus');
+                statusDiv.innerHTML = '<span class="status error">✗ Cannot reach API</span>';
+                addLog(`✗ Error checking system: ${error.message}`, true);
+                return false;
+            }
+        }
+
+        async function checkCurrentUser() {
+            try {
+                addLog('Fetching current user info...');
+
+                const response = await fetch('/api/user', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin'
+                });
+
+                const userDiv = document.getElementById('userInfo');
+
+                if (!response.ok) {
+                    userDiv.innerHTML = '<span class="status error">✗ Not logged in</span>';
+                    addLog('✗ User is not logged in', true);
+                    return null;
+                }
+
+                const user = await response.json();
+
+                const isAdmin = user.role === 'admin';
+                const roleClass = isAdmin ? 'success' : 'warning';
+
+                userDiv.innerHTML = `
+                    <p><strong>Name:</strong> ${user.name}</p>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>Role:</strong> <span class="status ${roleClass}">${user.role}</span></p>
+                    ${!isAdmin ? '<p class="status warning">⚠️ Only admins can verify records!</p>' : ''}
+                `;
+
+                addLog(`✓ Logged in as: ${user.name} (${user.role})`);
+
+                if (!isAdmin) {
+                    addLog('⚠️ Warning: This user is NOT an admin and cannot verify records', true);
+                }
+
+                return user;
+            } catch (error) {
+                const userDiv = document.getElementById('userInfo');
+                userDiv.innerHTML = '<span class="status error">✗ Error loading user</span>';
+                addLog(`✗ Error fetching user: ${error.message}`, true);
+                return null;
+            }
+        }
+
+        async function loadUnverifiedRecords() {
+            try {
+                addLog('Loading unverified financial records...');
+
+                const response = await fetch('/api/financial-records?is_verified=false&per_page=10', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                const records = data.data || data.records || [];
+
+                addLog(`✓ Found ${records.length} unverified record(s)`);
+
+                const listDiv = document.getElementById('recordsList');
+
+                if (records.length === 0) {
+                    listDiv.innerHTML = '<p style="text-align: center; color: #6B7280; padding: 20px;">No unverified records found</p>';
+                    return;
+                }
+
+                listDiv.innerHTML = records.map(record => `
+                    <div class="record-item">
+                        <div>
+                            <strong>Record #${record.id}</strong> -
+                            ${record.patient?.name || 'Unknown Patient'} -
+                            ₱${parseFloat(record.amount).toFixed(2)}
+                            ${record.verified_by ? '✓ VERIFIED' : '⚠️ UNVERIFIED'}
+                        </div>
+                        <button class="verify-btn" onclick="verifyRecord(${record.id})" ${record.verified_by ? 'disabled' : ''}>
+                            ${record.verified_by ? '✓ Verified' : 'Verify'}
+                        </button>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                const listDiv = document.getElementById('recordsList');
+                listDiv.innerHTML = '<span class="status error">✗ Error loading records</span>';
+                addLog(`✗ Error loading records: ${error.message}`, true);
+            }
+        }
+
+        async function verifyRecord(recordId) {
+            try {
+                addLog(`Attempting to verify record #${recordId}...`);
+
+                const csrfToken = getCSRFToken();
+                addLog(`Using CSRF Token: ${csrfToken ? csrfToken.substring(0, 10) + '...' : 'NONE'}`);
+
+                const response = await fetch(`/api/financial-records/${recordId}/mark-as-verified`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({})
+                });
+
+                addLog(`Response Status: ${response.status}`);
+
+                const data = await response.json();
+                addLog(`Response Data: ${JSON.stringify(data)}`);
+
+                if (response.ok && data.success) {
+                    addLog(`✓ SUCCESS: Record #${recordId} verified!`);
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Verified!',
+                        text: data.message || 'Record verified successfully',
+                        confirmButtonColor: '#10B981'
+                    });
+                    await loadUnverifiedRecords();
+                } else {
+                    addLog(`✗ FAILED: ${data.message || 'Unknown error'}`, true);
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'Verification Failed',
+                        text: data.message || 'Failed to verify record',
+                        confirmButtonColor: '#EF4444'
+                    });
+                }
+
+            } catch (error) {
+                addLog(`✗ ERROR: ${error.message}`, true);
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message,
+                    confirmButtonColor: '#EF4444'
+                });
+            }
+        }
+
+        async function testVerification() {
+            const recordId = document.getElementById('testRecordId').value;
+
+            if (!recordId) {
+                alert('Please enter a record ID');
+                return;
+            }
+
+            await verifyRecord(parseInt(recordId));
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            addLog('=== Verification Diagnostic Tool Started ===');
+            await checkSystemStatus();
+            await checkCurrentUser();
+            await loadUnverifiedRecords();
+            addLog('=== Initialization Complete ===');
+        });
+    </script>
+</body>
+</html>
